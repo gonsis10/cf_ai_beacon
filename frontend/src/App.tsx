@@ -17,6 +17,10 @@ interface Ticket {
   type: 'escalation' | 'refund' | 'inappropriate'
   reason: string
   orderId?: string
+  productName?: string
+  productSize?: string
+  damageDescription?: string
+  damageLocation?: string
   summary: string
   timestamp: number
 }
@@ -29,6 +33,7 @@ function App() {
   const [sessions, setSessions] = useState<ChatSession[]>([])
   const [tickets, setTickets] = useState<Ticket[]>([])
   const [isClosed, setIsClosed] = useState(false)
+  const [selectedTicket, setSelectedTicket] = useState<Ticket | null>(null)
   const messagesEndRef = useRef<HTMLDivElement>(null)
 
   const fetchTickets = async () => {
@@ -90,9 +95,19 @@ function App() {
   }
 
   const switchSession = (sid: string) => {
+    setSelectedTicket(null)
     setSessionId(sid)
     localStorage.setItem('beacon_session_id', sid)
     loadHistory(sid)
+  }
+
+  const viewTicket = (ticket: Ticket) => {
+    setSelectedTicket(ticket)
+  }
+
+  const viewTicketConversation = (ticket: Ticket) => {
+    setSelectedTicket(null)
+    switchSession(ticket.sessionId)
   }
 
   const updateSessionPreview = (sid: string, preview: string) => {
@@ -168,8 +183,10 @@ function App() {
           {tickets.map(ticket => (
             <div
               key={ticket.id}
-              onClick={() => switchSession(ticket.sessionId)}
-              className="group w-full text-left px-4 py-3 border-b border-neutral-800 hover:bg-neutral-800 cursor-pointer relative"
+              onClick={() => viewTicket(ticket)}
+              className={`group w-full text-left px-4 py-3 border-b border-neutral-800 hover:bg-neutral-800 cursor-pointer relative ${
+                selectedTicket?.id === ticket.id ? 'bg-neutral-800' : ''
+              }`}
             >
               <p className={`text-sm truncate pr-6 ${
                 ticket.type === 'inappropriate' ? 'text-orange-400' :
@@ -210,7 +227,7 @@ function App() {
               key={session.id}
               onClick={() => switchSession(session.id)}
               className={`group w-full text-left px-4 py-3 border-b border-neutral-800 hover:bg-neutral-800 cursor-pointer relative ${
-                session.id === sessionId ? 'bg-neutral-800' : ''
+                session.id === sessionId && !selectedTicket ? 'bg-neutral-800' : ''
               }`}
             >
               <p className="text-sm text-neutral-300 truncate pr-6">{session.preview}</p>
@@ -233,56 +250,136 @@ function App() {
 
       <div className="flex-1 flex flex-col">
         <div className="h-14 px-4 flex items-center border-b border-neutral-800">
-          <span className="text-sm text-neutral-400">Striker Elite Support</span>
+          <span className="text-sm text-neutral-400">
+            {selectedTicket ? 'Ticket Details' : 'Striker Elite Support'}
+          </span>
         </div>
 
-        <div className="flex-1 overflow-y-auto p-6 space-y-4">
-          {messages.length === 0 && (
-            <p className="text-neutral-600 text-sm">How can we help you today?</p>
-          )}
-          {messages.map((msg, i) => (
-            <div key={i} className={msg.role === 'user' ? 'text-right' : 'text-left'}>
-              <span
-                className={`inline-block px-3 py-2 rounded text-sm max-w-[70%] ${
-                  msg.role === 'user'
-                    ? 'bg-neutral-800 text-neutral-200'
-                    : 'text-neutral-300'
-                }`}
-              >
-                {msg.content}
-              </span>
-            </div>
-          ))}
-          {isLoading && (
-            <p className="text-neutral-500 text-sm">...</p>
-          )}
-          <div ref={messagesEndRef} />
-        </div>
+        {selectedTicket ? (
+          <div className="flex-1 overflow-y-auto p-6">
+            <div className="space-y-6">
+              <div className="flex items-center gap-3">
+                <span className={`px-2 py-1 rounded text-xs font-medium ${
+                  selectedTicket.type === 'inappropriate' ? 'bg-orange-500/20 text-orange-400' :
+                  selectedTicket.type === 'refund' ? 'bg-yellow-500/20 text-yellow-400' : 'bg-red-500/20 text-red-400'
+                }`}>
+                  {selectedTicket.type.toUpperCase()}
+                </span>
+                <span className="text-xs text-neutral-500">
+                  {new Date(selectedTicket.timestamp).toLocaleString()}
+                </span>
+              </div>
 
-        {isClosed ? (
-          <div className="p-4 border-t border-neutral-800 text-center">
-            <p className="text-sm text-neutral-500">This conversation is closed. A ticket has been raised.</p>
-          </div>
-        ) : (
-          <form onSubmit={sendMessage} className="p-4 border-t border-neutral-800">
-            <div className="flex gap-2">
-              <input
-                type="text"
-                value={input}
-                onChange={e => setInput(e.target.value)}
-                placeholder="Message..."
-                disabled={isLoading}
-                className="flex-1 px-3 py-2 bg-transparent border border-neutral-700 rounded text-sm text-neutral-200 placeholder-neutral-600 focus:outline-none focus:border-neutral-500"
-              />
+              <div>
+                <h3 className="text-xs text-neutral-500 uppercase tracking-wide mb-2">Summary</h3>
+                <p className="text-sm text-neutral-200">{selectedTicket.summary}</p>
+              </div>
+
+              <div>
+                <h3 className="text-xs text-neutral-500 uppercase tracking-wide mb-2">Reason</h3>
+                <p className="text-sm text-neutral-300">{selectedTicket.reason}</p>
+              </div>
+
+              {selectedTicket.orderId && (
+                <div>
+                  <h3 className="text-xs text-neutral-500 uppercase tracking-wide mb-2">Order ID</h3>
+                  <p className="text-sm text-neutral-300 font-mono">{selectedTicket.orderId}</p>
+                </div>
+              )}
+
+              {selectedTicket.productName && (
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <h3 className="text-xs text-neutral-500 uppercase tracking-wide mb-2">Product</h3>
+                    <p className="text-sm text-neutral-300">{selectedTicket.productName}</p>
+                  </div>
+                  {selectedTicket.productSize && (
+                    <div>
+                      <h3 className="text-xs text-neutral-500 uppercase tracking-wide mb-2">Size</h3>
+                      <p className="text-sm text-neutral-300">{selectedTicket.productSize}</p>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {selectedTicket.damageDescription && (
+                <div>
+                  <h3 className="text-xs text-neutral-500 uppercase tracking-wide mb-2">Damage Description</h3>
+                  <p className="text-sm text-neutral-300">{selectedTicket.damageDescription}</p>
+                </div>
+              )}
+
+              {selectedTicket.damageLocation && (
+                <div>
+                  <h3 className="text-xs text-neutral-500 uppercase tracking-wide mb-2">Damage Location</h3>
+                  <p className="text-sm text-neutral-300">{selectedTicket.damageLocation}</p>
+                </div>
+              )}
+
+              <div>
+                <h3 className="text-xs text-neutral-500 uppercase tracking-wide mb-2">Ticket ID</h3>
+                <p className="text-sm text-neutral-500 font-mono">{selectedTicket.id}</p>
+              </div>
+
               <button
-                type="submit"
-                disabled={isLoading || !input.trim()}
-                className="px-4 py-2 text-sm text-neutral-400 hover:text-neutral-200 disabled:opacity-30"
+                onClick={() => viewTicketConversation(selectedTicket)}
+                className="mt-4 px-4 py-2 text-sm border border-neutral-700 rounded text-neutral-400 hover:text-neutral-200 hover:border-neutral-500 transition-colors"
               >
-                Send
+                View Conversation
               </button>
             </div>
-          </form>
+          </div>
+        ) : (
+          <>
+            <div className="flex-1 overflow-y-auto p-6 space-y-4">
+              {messages.length === 0 && (
+                <p className="text-neutral-600 text-sm">How can we help you today?</p>
+              )}
+              {messages.map((msg, i) => (
+                <div key={i} className={msg.role === 'user' ? 'text-right' : 'text-left'}>
+                  <span
+                    className={`inline-block px-3 py-2 rounded text-sm max-w-[70%] ${
+                      msg.role === 'user'
+                        ? 'bg-neutral-800 text-neutral-200'
+                        : 'text-neutral-300'
+                    }`}
+                  >
+                    {msg.content}
+                  </span>
+                </div>
+              ))}
+              {isLoading && (
+                <p className="text-neutral-500 text-sm">...</p>
+              )}
+              <div ref={messagesEndRef} />
+            </div>
+
+            {isClosed ? (
+              <div className="p-4 border-t border-neutral-800 text-center">
+                <p className="text-sm text-neutral-500">This conversation is closed. A ticket has been raised.</p>
+              </div>
+            ) : (
+              <form onSubmit={sendMessage} className="p-4 border-t border-neutral-800">
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={input}
+                    onChange={e => setInput(e.target.value)}
+                    placeholder="Message..."
+                    disabled={isLoading}
+                    className="flex-1 px-3 py-2 bg-transparent border border-neutral-700 rounded text-sm text-neutral-200 placeholder-neutral-600 focus:outline-none focus:border-neutral-500"
+                  />
+                  <button
+                    type="submit"
+                    disabled={isLoading || !input.trim()}
+                    className="px-4 py-2 text-sm text-neutral-400 hover:text-neutral-200 disabled:opacity-30"
+                  >
+                    Send
+                  </button>
+                </div>
+              </form>
+            )}
+          </>
         )}
       </div>
     </div>

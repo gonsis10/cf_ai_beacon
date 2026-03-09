@@ -55,7 +55,7 @@ export default {
       const response = await stub.fetch(new Request('http://internal/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message }),
+        body: JSON.stringify({ sessionId, message }),
       }));
 
       const data = await response.json();
@@ -73,7 +73,7 @@ export default {
       const id = env.CHAT_SESSION.idFromName(sessionId);
       const stub = env.CHAT_SESSION.get(id);
 
-      const response = await stub.fetch(new Request('http://internal/history'));
+      const response = await stub.fetch(new Request(`http://internal/history?sessionId=${sessionId}`));
       const data = await response.json();
       return jsonResponse(data, response.status);
     }

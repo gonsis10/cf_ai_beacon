@@ -25,6 +25,10 @@ interface Ticket {
   type: 'escalation' | 'refund' | 'inappropriate';
   reason: string;
   orderId?: string;
+  productName?: string;
+  productSize?: string;
+  damageDescription?: string;
+  damageLocation?: string;
   summary: string;
   timestamp: number;
 }
@@ -111,13 +115,14 @@ export class ChatSession extends DurableObject<Env> {
 
   async fetch(request: Request): Promise<Response> {
     const url = new URL(request.url);
-    this.sessionId = this.ctx.id.toString();
 
     if (url.pathname === '/chat' && request.method === 'POST') {
       return this.handleChat(request);
     }
 
     if (url.pathname === '/history') {
+      const sid = url.searchParams.get('sessionId');
+      if (sid) this.sessionId = sid;
       return this.handleHistory();
     }
 
@@ -129,7 +134,8 @@ export class ChatSession extends DurableObject<Env> {
   }
 
   private async handleChat(request: Request): Promise<Response> {
-    const { message } = await request.json() as { message: string };
+    const { sessionId, message } = await request.json() as { sessionId: string; message: string };
+    this.sessionId = sessionId;
 
     await this.loadHistory();
 
@@ -146,7 +152,7 @@ export class ChatSession extends DurableObject<Env> {
     this.messages.push({ role: 'user', content: message });
 
     let ticket: Ticket | null = null;
-    const sessionId = this.sessionId!;
+    const ticketSessionId = this.sessionId!;
     const saveTicket = this.saveTicket.bind(this);
     const customerInfo = this.customerInfo;
     const hasRequiredInfo = this.hasRequiredInfo.bind(this);
@@ -203,10 +209,14 @@ export class ChatSession extends DurableObject<Env> {
               }
               ticket = {
                 id: crypto.randomUUID(),
-                sessionId,
+                sessionId: ticketSessionId,
                 type: 'escalation',
                 reason,
                 orderId: customerInfo.orderId,
+                productName: customerInfo.productName,
+                productSize: customerInfo.productSize,
+                damageDescription: customerInfo.damageDescription,
+                damageLocation: customerInfo.damageLocation,
                 summary: `${customerInfo.productName} size ${customerInfo.productSize} - ${customerInfo.damageDescription} at ${customerInfo.damageLocation}`,
                 timestamp: Date.now(),
               };
@@ -226,10 +236,14 @@ export class ChatSession extends DurableObject<Env> {
               }
               ticket = {
                 id: crypto.randomUUID(),
-                sessionId,
+                sessionId: ticketSessionId,
                 type: 'refund',
                 reason,
                 orderId: customerInfo.orderId,
+                productName: customerInfo.productName,
+                productSize: customerInfo.productSize,
+                damageDescription: customerInfo.damageDescription,
+                damageLocation: customerInfo.damageLocation,
                 summary: `Refund: ${customerInfo.productName} size ${customerInfo.productSize} - ${customerInfo.damageDescription}`,
                 timestamp: Date.now(),
               };
@@ -245,7 +259,7 @@ export class ChatSession extends DurableObject<Env> {
             execute: async ({ behavior }) => {
               ticket = {
                 id: crypto.randomUUID(),
-                sessionId,
+                sessionId: ticketSessionId,
                 type: 'inappropriate',
                 reason: behavior,
                 summary: `Flagged: ${behavior}`,
