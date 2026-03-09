@@ -55,7 +55,9 @@ For inappropriate behavior (profanity, threats), flag immediately without needin
 
 For general questions (sizing, surfaces), just answer helpfully.
 
-IMPORTANT: After successfully submitting any ticket (escalation, refund, or flagging inappropriate behavior), end your message with a clear closing statement letting the customer know their case has been submitted and this conversation will now be closed. Thank them for contacting support.`;
+IMPORTANT: After successfully submitting any ticket (escalation, refund, or flagging inappropriate behavior), end your message with a clear closing statement letting the customer know their case has been submitted and this conversation will now be closed. Thank them for contacting support.
+
+FORMATTING: Do not use markdown formatting like **bold**, *italics*, or bullet points. Write in plain conversational text only.`;
 
 export class ChatSession extends DurableObject<Env> {
   private messages: Message[] = [];
