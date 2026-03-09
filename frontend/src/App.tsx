@@ -9,6 +9,7 @@ interface ChatSession {
   id: string
   preview: string
   timestamp: number
+  closed?: boolean
 }
 
 interface Ticket {
@@ -89,7 +90,15 @@ function App() {
     if (data.messages) {
       setMessages(data.messages)
     }
-    setIsClosed(data.closed || false)
+    const closed = data.closed || false
+    setIsClosed(closed)
+
+    // Update session's closed status
+    setSessions(prev => {
+      const updated = prev.map(s => s.id === sid ? { ...s, closed } : s)
+      localStorage.setItem('beacon_sessions', JSON.stringify(updated))
+      return updated
+    })
   }
 
   const switchSession = (sid: string) => {
@@ -176,6 +185,12 @@ function App() {
       }
       if (data.closed) {
         setIsClosed(true)
+        // Mark session as closed in sidebar
+        setSessions(prev => {
+          const updated = prev.map(s => s.id === sessionId ? { ...s, closed: true } : s)
+          localStorage.setItem('beacon_sessions', JSON.stringify(updated))
+          return updated
+        })
       }
     } catch (err) {
       console.error('Chat error:', err)
@@ -241,7 +256,14 @@ function App() {
                 session.id === sessionId && !selectedTicket ? 'bg-neutral-800' : ''
               }`}
             >
-              <p className="text-sm text-neutral-300 truncate pr-6">{session.preview}</p>
+              <div className="flex items-center gap-2 pr-6">
+                <p className="text-sm text-neutral-300 truncate">{session.preview}</p>
+                {session.closed && (
+                  <span className="text-[10px] px-1.5 py-0.5 bg-neutral-700 text-neutral-400 rounded shrink-0">
+                    Closed
+                  </span>
+                )}
+              </div>
               <p className="text-xs text-neutral-600 mt-1">
                 {new Date(session.timestamp).toLocaleDateString()}
               </p>
