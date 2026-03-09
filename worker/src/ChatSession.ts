@@ -49,12 +49,15 @@ Only create tickets for significant defects (sole separation, torn uppers, broke
 
 For inappropriate behavior (profanity, threats), flag immediately without needing product details.
 
-For general questions (sizing, surfaces), just answer helpfully.`;
+For general questions (sizing, surfaces), just answer helpfully.
+
+IMPORTANT: After successfully submitting any ticket (escalation, refund, or flagging inappropriate behavior), end your message with a clear closing statement letting the customer know their case has been submitted and this conversation will now be closed. Thank them for contacting support.`;
 
 export class ChatSession extends DurableObject<Env> {
   private messages: Message[] = [];
   private sessionId: string | null = null;
   private customerInfo: CustomerInfo = {};
+  private closed: boolean = false;
 
   constructor(ctx: DurableObjectState, env: Env) {
     super(ctx, env);
@@ -62,10 +65,11 @@ export class ChatSession extends DurableObject<Env> {
 
   private async loadHistory(): Promise<void> {
     if (this.sessionId && this.messages.length === 0) {
-      const stored = await this.env.CHAT_KV.get(`session:${this.sessionId}`, 'json') as { messages: Message[]; customerInfo: CustomerInfo } | null;
+      const stored = await this.env.CHAT_KV.get(`session:${this.sessionId}`, 'json') as { messages: Message[]; customerInfo: CustomerInfo; closed?: boolean } | null;
       if (stored) {
         this.messages = stored.messages || [];
         this.customerInfo = stored.customerInfo || {};
+        this.closed = stored.closed || false;
       }
     }
   }
@@ -74,7 +78,7 @@ export class ChatSession extends DurableObject<Env> {
     if (this.sessionId) {
       await this.env.CHAT_KV.put(
         `session:${this.sessionId}`,
-        JSON.stringify({ messages: this.messages, customerInfo: this.customerInfo }),
+        JSON.stringify({ messages: this.messages, customerInfo: this.customerInfo, closed: this.closed }),
         { expirationTtl: 60 * 60 * 24 * 7 }
       );
     }
@@ -128,6 +132,17 @@ export class ChatSession extends DurableObject<Env> {
     const { message } = await request.json() as { message: string };
 
     await this.loadHistory();
+
+    if (this.closed) {
+      return new Response(JSON.stringify({
+        error: 'This conversation has been closed. A ticket has already been raised.',
+        closed: true,
+      }), {
+        status: 400,
+        headers: { 'Content-Type': 'application/json' },
+      });
+    }
+
     this.messages.push({ role: 'user', content: message });
 
     let ticket: Ticket | null = null;
@@ -255,12 +270,18 @@ export class ChatSession extends DurableObject<Env> {
       }
 
       this.messages.push({ role: 'assistant', content: result.text });
+
+      if (ticket) {
+        this.closed = true;
+      }
+
       await this.saveHistory();
 
       return new Response(JSON.stringify({
         response: result.text,
         messageCount: this.messages.length,
         ticket,
+        closed: this.closed,
       }), {
         headers: { 'Content-Type': 'application/json' },
       });
@@ -280,6 +301,7 @@ export class ChatSession extends DurableObject<Env> {
     return new Response(JSON.stringify({
       messages: this.messages,
       messageCount: this.messages.length,
+      closed: this.closed,
     }), {
       headers: { 'Content-Type': 'application/json' },
     });
