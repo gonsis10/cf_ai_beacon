@@ -7,6 +7,12 @@
     "deploy": "wrangler deploy",
     "tail": "wrangler tail"
   },
+  "dependencies": {
+    "@ai-sdk/openai": "^1.0.0",
+    "ai": "^4.0.0",
+    "workers-ai-provider": "^0.1.0",
+    "zod": "^3.24.0"
+  },
   "devDependencies": {
     "@cloudflare/workers-types": "^4.20260307.1",
     "typescript": "^5.9.3",

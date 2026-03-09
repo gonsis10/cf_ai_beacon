@@ -11,10 +11,13 @@ interface ChatSession {
   timestamp: number
 }
 
-interface Escalation {
+interface Ticket {
   id: string
   sessionId: string
-  preview: string
+  type: 'escalation' | 'refund' | 'inappropriate'
+  reason: string
+  orderId?: string
+  summary: string
   timestamp: number
 }
 
@@ -24,17 +27,23 @@ function App() {
   const [isLoading, setIsLoading] = useState(false)
   const [sessionId, setSessionId] = useState<string | null>(null)
   const [sessions, setSessions] = useState<ChatSession[]>([])
-  const [escalations, setEscalations] = useState<Escalation[]>([])
+  const [tickets, setTickets] = useState<Ticket[]>([])
   const messagesEndRef = useRef<HTMLDivElement>(null)
+
+  const fetchTickets = async () => {
+    const res = await fetch('/api/escalations')
+    const data = await res.json()
+    if (data.tickets) {
+      setTickets(data.tickets)
+    }
+  }
 
   useEffect(() => {
     const stored = localStorage.getItem('beacon_sessions')
     const savedSessions: ChatSession[] = stored ? JSON.parse(stored) : []
     setSessions(savedSessions)
 
-    const storedEscalations = localStorage.getItem('beacon_escalations')
-    const savedEscalations: Escalation[] = storedEscalations ? JSON.parse(storedEscalations) : []
-    setEscalations(savedEscalations)
+    fetchTickets()
 
     const currentId = localStorage.getItem('beacon_session_id')
     if (currentId) {
@@ -113,6 +122,9 @@ function App() {
       if (data.response) {
         setMessages(prev => [...prev, { role: 'assistant', content: data.response }])
       }
+      if (data.ticket) {
+        fetchTickets()
+      }
     } catch (err) {
       console.error('Chat error:', err)
     } finally {
@@ -124,23 +136,28 @@ function App() {
     <div className="h-screen bg-neutral-900 flex">
       <div className="w-64 border-r border-neutral-800 flex flex-col">
         <div className="h-14 px-4 flex items-center border-b border-neutral-800">
-          <h2 className="text-sm font-medium text-neutral-400">Escalations</h2>
+          <h2 className="text-sm font-medium text-neutral-400">Tickets</h2>
         </div>
         <div className="flex-1 overflow-y-auto">
-          {escalations.map(esc => (
+          {tickets.map(ticket => (
             <button
-              key={esc.id}
-              onClick={() => switchSession(esc.sessionId)}
+              key={ticket.id}
+              onClick={() => switchSession(ticket.sessionId)}
               className="w-full text-left px-4 py-3 border-b border-neutral-800 hover:bg-neutral-800"
             >
-              <p className="text-sm text-red-400 truncate">{esc.preview}</p>
+              <p className={`text-sm truncate ${
+                ticket.type === 'inappropriate' ? 'text-orange-400' :
+                ticket.type === 'refund' ? 'text-yellow-400' : 'text-red-400'
+              }`}>
+                {ticket.summary}
+              </p>
               <p className="text-xs text-neutral-600 mt-1">
-                {new Date(esc.timestamp).toLocaleDateString()}
+                {ticket.type} · {new Date(ticket.timestamp).toLocaleDateString()}
               </p>
             </button>
           ))}
-          {escalations.length === 0 && (
-            <p className="text-xs text-neutral-600 p-4">No escalations</p>
+          {tickets.length === 0 && (
+            <p className="text-xs text-neutral-600 p-4">No tickets</p>
           )}
         </div>
       </div>

@@ -78,6 +78,12 @@ export default {
       return jsonResponse(data, response.status);
     }
 
+    // Get all tickets
+    if (url.pathname === '/api/escalations' && request.method === 'GET') {
+      const tickets = await env.CHAT_KV.get('tickets', 'json');
+      return jsonResponse({ tickets: tickets || [] });
+    }
+
     return jsonResponse({ error: 'Not found' }, 404);
   },
 };

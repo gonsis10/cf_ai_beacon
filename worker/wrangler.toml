@@ -17,3 +17,7 @@ class_name = "ChatSession"
 [[migrations]]
 tag = "v1"
 new_classes = ["ChatSession"]
+
+[vars]
+# Set to "local" to use your own model, "cloudflare" to use Workers AI
+AI_PROVIDER = "local"
