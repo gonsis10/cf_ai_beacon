@@ -102,6 +102,26 @@ function App() {
     saveSessions(updated)
   }
 
+  const deleteSession = async (sid: string, e: React.MouseEvent) => {
+    e.stopPropagation()
+    await fetch(`/api/session?sessionId=${sid}`, { method: 'DELETE' })
+    const updated = sessions.filter(s => s.id !== sid)
+    saveSessions(updated)
+    if (sessionId === sid) {
+      if (updated.length > 0) {
+        switchSession(updated[0].id)
+      } else {
+        createSession()
+      }
+    }
+  }
+
+  const deleteTicket = async (ticketId: string, e: React.MouseEvent) => {
+    e.stopPropagation()
+    await fetch(`/api/ticket?ticketId=${ticketId}`, { method: 'DELETE' })
+    setTickets(tickets.filter(t => t.id !== ticketId))
+  }
+
   const sendMessage = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
     if (!input.trim() || !sessionId || isLoading) return
@@ -146,12 +166,12 @@ function App() {
         </div>
         <div className="flex-1 overflow-y-auto">
           {tickets.map(ticket => (
-            <button
+            <div
               key={ticket.id}
               onClick={() => switchSession(ticket.sessionId)}
-              className="w-full text-left px-4 py-3 border-b border-neutral-800 hover:bg-neutral-800"
+              className="group w-full text-left px-4 py-3 border-b border-neutral-800 hover:bg-neutral-800 cursor-pointer relative"
             >
-              <p className={`text-sm truncate ${
+              <p className={`text-sm truncate pr-6 ${
                 ticket.type === 'inappropriate' ? 'text-orange-400' :
                 ticket.type === 'refund' ? 'text-yellow-400' : 'text-red-400'
               }`}>
@@ -160,7 +180,13 @@ function App() {
               <p className="text-xs text-neutral-600 mt-1">
                 {ticket.type} · {new Date(ticket.timestamp).toLocaleDateString()}
               </p>
-            </button>
+              <button
+                onClick={(e) => deleteTicket(ticket.id, e)}
+                className="absolute right-2 top-3 text-neutral-600 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-opacity"
+              >
+                ×
+              </button>
+            </div>
           ))}
           {tickets.length === 0 && (
             <p className="text-xs text-neutral-600 p-4">No tickets</p>
@@ -180,18 +206,24 @@ function App() {
         </div>
         <div className="flex-1 overflow-y-auto">
           {sessions.map(session => (
-            <button
+            <div
               key={session.id}
               onClick={() => switchSession(session.id)}
-              className={`w-full text-left px-4 py-3 border-b border-neutral-800 hover:bg-neutral-800 ${
+              className={`group w-full text-left px-4 py-3 border-b border-neutral-800 hover:bg-neutral-800 cursor-pointer relative ${
                 session.id === sessionId ? 'bg-neutral-800' : ''
               }`}
             >
-              <p className="text-sm text-neutral-300 truncate">{session.preview}</p>
+              <p className="text-sm text-neutral-300 truncate pr-6">{session.preview}</p>
               <p className="text-xs text-neutral-600 mt-1">
                 {new Date(session.timestamp).toLocaleDateString()}
               </p>
-            </button>
+              <button
+                onClick={(e) => deleteSession(session.id, e)}
+                className="absolute right-2 top-3 text-neutral-600 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-opacity"
+              >
+                ×
+              </button>
+            </div>
           ))}
           {sessions.length === 0 && (
             <p className="text-xs text-neutral-600 p-4">No chats yet</p>

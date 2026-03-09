@@ -10,7 +10,7 @@ export { ChatSession };
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+  'Access-Control-Allow-Methods': 'GET, POST, DELETE, OPTIONS',
   'Access-Control-Allow-Headers': 'Content-Type',
 };
 
@@ -82,6 +82,34 @@ export default {
     if (url.pathname === '/api/escalations' && request.method === 'GET') {
       const tickets = await env.CHAT_KV.get('tickets', 'json');
       return jsonResponse({ tickets: tickets || [] });
+    }
+
+    // Delete a session
+    if (url.pathname === '/api/session' && request.method === 'DELETE') {
+      const sessionId = url.searchParams.get('sessionId');
+
+      if (!sessionId) {
+        return jsonResponse({ error: 'sessionId is required' }, 400);
+      }
+
+      await env.CHAT_KV.delete(`session:${sessionId}`);
+      return jsonResponse({ success: true });
+    }
+
+    // Delete a ticket
+    if (url.pathname === '/api/ticket' && request.method === 'DELETE') {
+      const ticketId = url.searchParams.get('ticketId');
+
+      if (!ticketId) {
+        return jsonResponse({ error: 'ticketId is required' }, 400);
+      }
+
+      const existing = await env.CHAT_KV.get('tickets', 'json') as Array<{ id: string }> | null;
+      if (existing) {
+        const filtered = existing.filter(t => t.id !== ticketId);
+        await env.CHAT_KV.put('tickets', JSON.stringify(filtered));
+      }
+      return jsonResponse({ success: true });
     }
 
     return jsonResponse({ error: 'Not found' }, 404);
