@@ -52,11 +52,9 @@ function App() {
     fetchTickets()
 
     const currentId = localStorage.getItem('beacon_session_id')
-    if (currentId) {
+    if (currentId && savedSessions.some(s => s.id === currentId)) {
       setSessionId(currentId)
       loadHistory(currentId)
-    } else {
-      createSession()
     }
   }, [])
 
@@ -119,21 +117,34 @@ function App() {
 
   const deleteSession = async (sid: string, e: React.MouseEvent) => {
     e.stopPropagation()
-    await fetch(`/api/session?sessionId=${sid}`, { method: 'DELETE' })
+    try {
+      await fetch(`/api/session?sessionId=${sid}`, { method: 'DELETE' })
+    } catch (err) {
+      console.error('Failed to delete session:', err)
+    }
     const updated = sessions.filter(s => s.id !== sid)
     saveSessions(updated)
     if (sessionId === sid) {
       if (updated.length > 0) {
         switchSession(updated[0].id)
       } else {
-        createSession()
+        setSessionId(null)
+        setMessages([])
+        localStorage.removeItem('beacon_session_id')
       }
     }
   }
 
   const deleteTicket = async (ticketId: string, e: React.MouseEvent) => {
     e.stopPropagation()
-    await fetch(`/api/ticket?ticketId=${ticketId}`, { method: 'DELETE' })
+    try {
+      await fetch(`/api/ticket?ticketId=${ticketId}`, { method: 'DELETE' })
+    } catch (err) {
+      console.error('Failed to delete ticket:', err)
+    }
+    if (selectedTicket?.id === ticketId) {
+      setSelectedTicket(null)
+    }
     setTickets(tickets.filter(t => t.id !== ticketId))
   }
 
@@ -326,6 +337,18 @@ function App() {
                 className="mt-4 px-4 py-2 text-sm border border-neutral-700 rounded text-neutral-400 hover:text-neutral-200 hover:border-neutral-500 transition-colors"
               >
                 View Conversation
+              </button>
+            </div>
+          </div>
+        ) : !sessionId ? (
+          <div className="flex-1 flex items-center justify-center">
+            <div className="text-center">
+              <p className="text-neutral-500 text-sm mb-4">No conversation selected</p>
+              <button
+                onClick={createSession}
+                className="px-4 py-2 text-sm border border-neutral-700 rounded text-neutral-400 hover:text-neutral-200 hover:border-neutral-500 transition-colors"
+              >
+                Start a new chat
               </button>
             </div>
           </div>
