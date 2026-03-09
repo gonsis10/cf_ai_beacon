@@ -1,0 +1,19 @@
+name = "beacon-worker"
+main = "src/index.ts"
+compatibility_date = "2026-03-07"
+compatibility_flags = ["nodejs_compat"]
+
+[ai]
+binding = "AI"
+
+[[kv_namespaces]]
+binding = "CHAT_KV"
+id = "placeholder-kv-id"
+
+[[durable_objects.bindings]]
+name = "CHAT_SESSION"
+class_name = "ChatSession"
+
+[[migrations]]
+tag = "v1"
+new_classes = ["ChatSession"]
